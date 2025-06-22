@@ -1,4 +1,5 @@
 import asyncio
+import re
 from camoufox.async_api import AsyncCamoufox
 from browserforge.fingerprints import Screen
 
@@ -38,37 +39,48 @@ async def login_instagram(username, password):
             except Exception:
                 print("'Turn on notifications' dialog did not appear or could not be clicked.")
             
-            # Check if login was successful
-            if "instagram.com" in page.url:
-                print("Login successful!")
-                await asyncio.sleep(3)  # Wait for page to settle
+            # Navigate to Your Activity -> Likes to unlike posts
+            print("Navigating to Your Activity > Likes...")
+            # Using get_by_text is a reliable way to find these navigation elements
+            await page.get_by_text("More").last.click()
+            await page.wait_for_timeout(1000) # Wait for the menu to appear
+            await page.get_by_text("Your activity").last.click()
+            await page.wait_for_load_state("networkidle")
+            
+            # Click "Select" to enter bulk action mode
+            await page.get_by_text("Select").last.click()
+            await page.wait_for_load_state("networkidle")
+            print("In bulk selection mode.")
 
-                # Click on the 'More' button to open the menu
-                print("Clicking on 'More' button...")
-                await page.locator("text=More").last.click()
-                await page.wait_for_load_state('networkidle')
+            # Select all visible items on the page
+            checkboxes = page.locator('div[aria-label="Toggle checkbox"]')
+            count = await checkboxes.count()
+            
+            if count > 0:
+                print(f"Found {count} items to unlike.")
+                for i in range(count):
+                    await checkboxes.nth(i).click()
+                    # A small delay to mimic human behavior
+                    await asyncio.sleep(0.3) 
 
-                # Click on 'Settings' from the menu
-                print("Clicking on 'Settings'...")
-                await page.locator('a:has-text("Settings")').click()
-                await page.wait_for_load_state('networkidle')
+                print("All items selected. Clicking 'Unlike'.")
+                # The 'Unlike' button at the bottom has dynamic text (e.g., "45 selected Unlike").
+                # We use a regular expression to match it reliably.
+                await page.get_by_role("button", name=re.compile(r"selected Unlike")).click()
+                await page.wait_for_timeout(1000) # Give the confirmation dialog time to appear
 
-                # After menu opens, click 'Your activity'
-                print("Clicking on 'Your activity'...")
-                await page.get_by_text("Your activity").click()
-
+                # Now, click the "Unlike" button inside the confirmation dialog.
+                # Scoping the search to the dialog makes it unambiguous.
+                await page.get_by_role("dialog").get_by_role("button", name="Unlike").click()
+                print(f"Successfully unliked {count} items.")
             else:
-                print("Login failed. Please check your credentials.")
-            
-            # Debug: Screenshot dan print URL setelah login
-            await page.screenshot(path='after_login.png')
-            print('Current URL:', page.url)
-            
-            # Wait for a moment to see the result
+                print("No liked items found to select.")
+
+            # Wait a moment to observe the result before the script ends
             await asyncio.sleep(5)
-            
+
         except Exception as e:
-            print(f"An error occurred: {str(e)}")
+            print(f"An error occurred: {e}")
 
 async def main():
     # Replace these with your Instagram credentials
