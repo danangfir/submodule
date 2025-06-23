@@ -47,36 +47,50 @@ async def login_instagram(username, password):
             await page.get_by_text("Your activity").last.click()
             await page.wait_for_load_state("networkidle")
             
-            # Click "Select" to enter bulk action mode
-            await page.get_by_text("Select").last.click()
-            await page.wait_for_load_state("networkidle")
-            print("In bulk selection mode.")
+            # Loop to continuously scroll, select, and unlike until no more items are left.
+            while True:
+                print("\n--- Starting New Batch: Scrolling to find more items... ---")
+                
+                # Scroll to the bottom of the page to load new items. This is key.
+                await page.keyboard.press('End')
+                # Wait for content to load after scrolling
+                await page.wait_for_timeout(3000) 
+                
+                # Now, try to enter 'Select' mode.
+                try:
+                    await page.get_by_text("Select").last.click()
+                    await page.wait_for_timeout(1000)
+                except Exception:
+                    print("Could not find 'Select' button after scrolling. Assuming process is finished.")
+                    break
 
-            # Select all visible items on the page
-            checkboxes = page.locator('div[aria-label="Toggle checkbox"]')
-            count = await checkboxes.count()
-            
-            if count > 0:
+                checkboxes = page.locator('div[aria-label="Toggle checkbox"]')
+                count = await checkboxes.count()
+
+                if count == 0:
+                    print("No items found after scrolling and entering select mode. Process finished.")
+                    # Try to exit selection mode cleanly if possible.
+                    if await page.get_by_text("Cancel").is_visible():
+                        await page.get_by_text("Cancel").click()
+                    break
+
                 print(f"Found {count} items to unlike.")
                 for i in range(count):
                     await checkboxes.nth(i).click()
-                    # A small delay to mimic human behavior
-                    await asyncio.sleep(0.3) 
+                    await asyncio.sleep(0.2)
 
-                print("All items selected. Clicking 'Unlike'.")
-                # The 'Unlike' button at the bottom has dynamic text (e.g., "45 selected Unlike").
-                # We use a regular expression to match it reliably.
-                await page.get_by_role("button", name=re.compile(r"selected Unlike")).click()
-                await page.wait_for_timeout(1000) # Give the confirmation dialog time to appear
+                print("All items on this page selected. Clicking 'Unlike'.")
+                await page.get_by_text("Unlike").last.click()
+                await page.wait_for_timeout(1000)
 
-                # Now, click the "Unlike" button inside the confirmation dialog.
-                # Scoping the search to the dialog makes it unambiguous.
-                await page.get_by_role("dialog").get_by_role("button", name="Unlike").click()
-                print(f"Successfully unliked {count} items.")
-            else:
-                print("No liked items found to select.")
+                print("Confirming unlike action in the dialog...")
+                await page.get_by_role("dialog").locator(':is(button, [role="button"]):has-text("Unlike")').last.click()
+                print(f"Successfully unliked {count} items. Preparing for next batch...")
+                
+                # Wait for the page to settle before the next scroll.
+                await page.wait_for_timeout(3000)
 
-            # Wait a moment to observe the result before the script ends
+            print("Automation finished.")
             await asyncio.sleep(5)
 
         except Exception as e:
@@ -84,8 +98,8 @@ async def login_instagram(username, password):
 
 async def main():
     # Replace these with your Instagram credentials
-    USERNAME = "dgfr111"
-    PASSWORD = "dancok26"
+    USERNAME = "dngfirm"
+    PASSWORD = "dancogige26"
     
     await login_instagram(USERNAME, PASSWORD)
 
