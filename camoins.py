@@ -51,6 +51,11 @@ async def login_instagram(username, password):
             while True:
                 print("\n--- Starting New Batch: Scrolling to find more items... ---")
                 
+                # Check if page is still valid
+                if page.is_closed():
+                    print("Page has been closed. Exiting...")
+                    break
+                
                 # Scroll to the bottom of the page to load new items. This is key.
                 await page.keyboard.press('End')
                 # Wait for content to load after scrolling
@@ -75,17 +80,55 @@ async def login_instagram(username, password):
                     break
 
                 print(f"Found {count} items to unlike.")
+                
+                # Improved checkbox clicking with better error handling
                 for i in range(count):
-                    await checkboxes.nth(i).click()
-                    await asyncio.sleep(0.2)
+                    try:
+                        # Check if page is still valid before each click
+                        if page.is_closed():
+                            print("Page closed during checkbox selection. Exiting...")
+                            return
+                        
+                        checkbox = checkboxes.nth(i)
+                        
+                        # Wait for checkbox to be visible and stable
+                        await checkbox.wait_for(state="visible", timeout=5000)
+                        
+                        # Try multiple click methods if one fails
+                        try:
+                            await checkbox.click(force=True)
+                        except Exception as click_error:
+                            print(f"Standard click failed for checkbox {i}, trying alternative method...")
+                            try:
+                                # Try using JavaScript click as fallback
+                                await page.evaluate("(element) => element.click()", checkbox)
+                            except Exception as js_error:
+                                print(f"JavaScript click also failed for checkbox {i}: {js_error}")
+                                continue
+                        
+                        await asyncio.sleep(0.5)  # Increased delay between clicks
+                        
+                    except Exception as e:
+                        print(f"Error clicking checkbox {i}: {e}")
+                        continue
 
                 print("All items on this page selected. Clicking 'Unlike'.")
-                await page.get_by_text("Unlike").last.click()
-                await page.wait_for_timeout(1000)
+                try:
+                    await page.get_by_text("Unlike").last.click()
+                    await page.wait_for_timeout(1000)
 
-                print("Confirming unlike action in the dialog...")
-                await page.get_by_role("dialog").locator(':is(button, [role="button"]):has-text("Unlike")').last.click()
-                print(f"Successfully unliked {count} items. Preparing for next batch...")
+                    print("Confirming unlike action in the dialog...")
+                    await page.get_by_role("dialog").locator(':is(button, [role="button"]):has-text("Unlike")').last.click()
+                    print(f"Successfully unliked {count} items. Preparing for next batch...")
+                except Exception as unlike_error:
+                    print(f"Error during unlike process: {unlike_error}")
+                    # Try to cancel selection if unlike fails
+                    try:
+                        if await page.get_by_text("Cancel").is_visible():
+                            await page.get_by_text("Cancel").click()
+                    except:
+                        pass
+                    break
                 
                 # Wait for the page to settle before the next scroll.
                 await page.wait_for_timeout(3000)
