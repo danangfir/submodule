@@ -141,8 +141,8 @@ async def login_instagram(username, password):
 
 async def main():
     # Replace these with your Instagram credentials
-    USERNAME = "dngfirm"
-    PASSWORD = "dancogige26"
+    USERNAME = "example_instagram_username"
+    PASSWORD = "example_instagram_password"
     
     await login_instagram(USERNAME, PASSWORD)
 

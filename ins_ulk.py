@@ -77,8 +77,8 @@ def login_instagram(username, password):
 
 if __name__ == "__main__":
     # Replace these with your Instagram credentials
-    USERNAME = "dgfr111"
-    PASSWORD = "dancok26"
+    USERNAME = "example_instagram_username"
+    PASSWORD = "example_instagram_password"
     
     login_instagram(USERNAME, PASSWORD)
 
