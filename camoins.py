@@ -4,7 +4,7 @@ from camoufox.async_api import AsyncCamoufox
 from browserforge.fingerprints import Screen
 
 async def login_instagram(username, password):
-    async with AsyncCamoufox() as browser:
+    async with AsyncCamoufox(humanize=2.0) as browser:
         try:
             # Launch browser and create page
             page = await browser.new_page()
